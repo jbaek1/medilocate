@@ -14,8 +14,8 @@ function Title() {
         color: '#FFFFFF', 
         marginTop: '0px'
       };
-      return <div> <h1 style={titleStyle}>EKREB </h1>
-      <h1 style={titleStyle2}> play scrambling puzzles!</h1>  </div>;
+      return <div> <h1 style={titleStyle}>Medilocate </h1>
+      <h1 style={titleStyle2}> Get your medications, instantly.</h1>  </div>;
 }
 
 export default Title;
