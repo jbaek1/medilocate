@@ -12,9 +12,9 @@ app.use(bodyParser.json());
 const output = [];
 const medications = [];
 const recommended1 = [];
-app.post('/classify', (req, res) => {// accepts text sequence and classifies disease that 
+const sequence "";
+app.get('/classify', (req, res) => {// accepts text sequence and classifies disease that 
     output = [];
-    const sequence = req.body.sequence;
     const pythonProcess = spawn('python', ['./nlp.py', sequence]);
     pythonProcess.stdout.on('data', (data) => {
         if (data.toString() === ""){
@@ -46,7 +46,7 @@ app.get('/recommended-medication', (req, res) => {
         res.json(recommended1);
     });
 });
-app.post('/medication-interactions', async (req, res) => {
+app.get('/medication-interactions', async (req, res) => {
     const recommended = req.body.recommended;  // Get the recommended array from request body
     if (!Array.isArray(recommended)) {
         return res.status(400).send("Recommended must be an array");
@@ -67,6 +67,14 @@ app.post('/medication-interactions', async (req, res) => {
 
     res.json(interactions);
 });
+
+app.post('/storeInput', (req, res) => {
+    const sequence = req.body.input;
+    if (!userInput) {
+      return res.status(400).send('User input is required');
+    }
+}
+
 
 
 
