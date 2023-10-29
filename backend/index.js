@@ -12,7 +12,7 @@ app.use(bodyParser.json());
 const output = [];
 const medications = [];
 const recommended1 = [];
-const sequence "";
+const sequence = "";
 app.get('/classify', (req, res) => {// accepts text sequence and classifies disease that 
     output = [];
     const pythonProcess = spawn('python', ['./nlp.py', sequence]);
@@ -67,53 +67,12 @@ app.get('/medication-interactions', async (req, res) => {
 
     res.json(interactions);
 });
-
 app.post('/storeInput', (req, res) => {
     const sequence = req.body.input;
     if (!userInput) {
       return res.status(400).send('User input is required');
     }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+});
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
