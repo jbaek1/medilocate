@@ -1,129 +1,112 @@
-const fs = require("fs/promises");
-const express = require("express");
-const cors = require("cors");
-const _ = require("lodash");
-
+const express = require('express');
+const bodyParser = require('body-parser');
+const { spawn } = require('child_process');
+const express = require('express');
+const csv = require('csv-parser');
+const fs = require('fs');
+const axios = require('axios');
 const app = express();
+const port = 3000;
 
-app.use(express.json());
-app.use(cors());
-
-//here is the word that is generated
-let rand = "";
-
-//API call here: use WordsAPI to retrieve a random word
-app.get("/generate", async (req, res) => {
-    //retrieve the random word based on the user defined difficulty level
-    const level = req.query.level;
-    const axios = require('axios');
-    const options = {
-        method: 'GET',
-        url: 'https://wordsapiv1.p.rapidapi.com/words/',
-        params: {
-            random: 'true',
-            lettersmin: 13-level,
-            lettersMax: 14-level,
-            frequencymin: level
-        },
-        headers: {
-        'X-RapidAPI-Key': '3c0c765545mshbe368cb83659f96p151cdfjsn4b0c0a3fa5d2',
-        'X-RapidAPI-Host': 'wordsapiv1.p.rapidapi.com'
+app.use(bodyParser.json()); 
+const output = [];
+const medications = [];
+const recommended1 = [];
+app.post('/classify', (req, res) => {// accepts text sequence and classifies disease that 
+    output = [];
+    const sequence = req.body.sequence;
+    const pythonProcess = spawn('python', ['./nlp.py', sequence]);
+    pythonProcess.stdout.on('data', (data) => {
+        if (data.toString() === ""){
+            res.status(500).send("Sorry, we weren't able to find a matching condition for your input. Please try rephrasing.")
         }
-    };
-
-    //If the API call gives us a valid word, we scramble that word and display both the scrmabled
-    //and unscrambled version
-    try {
-        const response = await axios.request(options);
-
-        //this is the word that we fetched
-        rand = response.data.word;
-
-        //and now scramble the word. Call the scramble method
-        scrambled = scramble(rand);
-
-        //display the scrambled word in json
-        res.json({
-            word: scrambled,
-            orig:rand
-        });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({error: "Failed to retrieve"});
+        else{
+        const lines = data.toString().split('\n').filter(line => line);  // Split the output into lines and remove any empty lines
+        output = [...output, ...lines];  // Append the lines to the existing output
+        res.send(lines.join(', '));  // Send the lines as a comma-separated string (or any other format you prefer)
+        }
+    });
+});
+app.get('/recommended-medication', (req, res) => {
+    fs.createReadStream('dataset.csv')  // Specify the path to your CSV file here.
+    .pipe(csv())
+    .on('data', (row) => {
+        let score = 0;
+        for (let condition of output) {
+            if (Object.values(row).includes(condition)) {
+                score++;
+            }
+        }
+        medications.push({ medication: row.Medication, score: score });
+    })
+    .on('end', () => {
+        // Sort the medications array by score in descending order and pick the first one (highest score)
+        medications.sort((a, b) => b.score - a.score);
+        recommended1 = medications.filter(med => med.score === medications[0].score);
+        res.json(recommended1);
+    });
+});
+app.post('/medication-interactions', async (req, res) => {
+    const recommended = req.body.recommended;  // Get the recommended array from request body
+    if (!Array.isArray(recommended)) {
+        return res.status(400).send("Recommended must be an array");
     }
+
+    const rxcuiCodes = recommended.map(med => medicationMap.get(med)).filter(code => code);  // Filter out any undefined codes.
+
+    const interactions = [];
+    for (let rxcui of rxcuiCodes) {
+        try {
+            const response = await axios.get(`https://rxnav.nlm.nih.gov/REST/interaction/interaction.json?rxcui=${rxcui}&sources=ONCHigh`);
+            interactions.push(...response.data.interactionTypeGroup[0].interactionType);
+        } catch (error) {
+            console.error(`Failed to fetch interactions for RxCUI: ${rxcui}`, error);
+            return res.status(500).send("Error fetching interactions");
+        }
+    }
+
+    res.json(interactions);
 });
 
-//function to scramble the words
-function scramble(word){
 
-    const chars = word.split("");
 
-    //use the shuffle method in lodash to shuffle the words
-    const scrambled_chars = _.shuffle(chars);
-    const scrambled_word = scrambled_chars.join("");
 
-    //make sure that the word is actually scrambled, no accidentlly the same spelling
-    //especially for the small words in "easy" mode
-    if(scrambled_word == word){
-        return scramble(word);
-    }
-    return scrambled_word;
-}
 
-//validating user's answer
-app.patch("/validate", async(req, res) =>{
-    const user_word = req.body.user
-    
-    //check user input answer against the actual word
-    if(user_word === rand){
-        res.json({
-            response: true
-        });
-        
-        //update score
-        score += 1;
-    }
-    else{
-        res.json({
-            response: false
-        });
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
 });
-
-//give hints to user: this finds the definition
-app.patch("/hint", async(req, res) =>{
-    const axios = require('axios');
-
-    const options = {
-    method: 'GET',
-    url: `https://wordsapiv1.p.rapidapi.com/words/${rand}`,
-    headers: {
-        'X-RapidAPI-Key': '3c0c765545mshbe368cb83659f96p151cdfjsn4b0c0a3fa5d2',
-        'X-RapidAPI-Host': 'wordsapiv1.p.rapidapi.com'
-    }
-    };
-
-    try {
-        //If we find a definition, display it in json. If not, then we will 
-        //display a no definition found message
-        const response = await axios.request(options);
-        let def = "Sorry...no definition found for this word";
-
-        try{
-            def = response.data.results[0].definition;
-        }
-        catch(error){
-            console.log(error);
-        }
-        
-        res.json({
-            hint: def
-        });
-
-    } catch (error) {
-        console.error(error);
-    }
-});
-
-app.listen(3000, () => console.log("API Server is running..."));
