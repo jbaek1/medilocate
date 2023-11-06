@@ -7,5 +7,5 @@ Built using Python, Node.js, implemented API calls to RxNorm to check for medica
 ## Frontend:
 Currently under development using React Native, expected completion in November 2023. In the frontend, users will be directed to a GoodRX page where they can check which nearest pharmacies carry the OTC drug they have been recommended to alleviate their symptoms by our app. 
 
-###Developers:
-Jihoon (Jimmy) Baek, Haoran (Hunter) Qin, Aarij Atiq
+##Developers:
+Aarij Atiq, Jihoon (Jimmy) Baek, Haoran (Hunter) Qin
